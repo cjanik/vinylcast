@@ -1,0 +1,26 @@
+{
+  "name": "vinylcast",
+  "version": "0.0.0",
+  "description": "cast alsa audio to chromecast",
+  "main": "index.js",
+  "scripts": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cjanik/vinylcast.git"
+  },
+  "keywords": [
+    "node",
+    "alsa",
+    "chromecast",
+    "vinyl",
+    "raspberrypi"
+  ],
+  "author": "cjanik@umich.edu",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/cjanik/vinylcast/issues"
+  },
+  "homepage": "https://github.com/cjanik/vinylcast#readme"
+}
