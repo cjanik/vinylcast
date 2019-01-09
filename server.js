@@ -49,7 +49,7 @@ function ondeviceup(host) {
           media.contentId
         )
 
-        player.load(media, { autoplay: true }, function(err, status) {
+        player.load(media, { autoplay: true }, function(status) {
           console.log("media loaded playerState=%s", status.playerState)
         })
       })
@@ -61,22 +61,22 @@ function ondeviceup(host) {
     client.close()
   })
 }
+const sequence = [
+    mdns.rst.DNSServiceResolve(),
+    'DNSServiceGetAddrInfo' in mdns.dns_sd ? mdns.rst.DNSServiceGetAddrInfo() : mdns.rst.getaddrinfo({families:[4]}),
+    mdns.rst.makeAddressesUnique()
+]
 
-const browser = mdns.createBrowser(mdns.tcp("googlecast"))
+const browser = mdns.createBrowser(mdns.tcp("googlecast"), { resolverSequence: sequence })
 
 browser.on("serviceUp", function(service) {
-  console.log(
-    'found device "%s" at %s:%d',
-    service.name,
-    service.addresses[0],
-    service.port
-  )
-  ondeviceup(service.addresses[0])
-  browser.stop()
+  console.log(`found cast device: ${service.txtRecord.fn}`)
+  // ondeviceup(service.addresses[0])
+  //  browser.stop()
 })
 
+browser.on("error", err => console.log(`browser error: ${err}`))
 browser.start()
-
 const app = express()
 
 app.get("/vinylcast", (req, res, next) => {
@@ -99,5 +99,5 @@ app.get("/vinylcast", (req, res, next) => {
   // let audioRecorder = new AudioRecorder(options, logger)
 })
 app.listen(3030)
+console.log("app listening on 3030")
 
-console.log("hidfdfdey ho!")
