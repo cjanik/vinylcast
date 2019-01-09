@@ -2,7 +2,7 @@
   "name": "vinylcast",
   "version": "0.0.0",
   "description": "cast alsa audio to chromecast",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
     "test": "test"
   },
@@ -22,5 +22,13 @@
   "bugs": {
     "url": "https://github.com/cjanik/vinylcast/issues"
   },
-  "homepage": "https://github.com/cjanik/vinylcast#readme"
+  "homepage": "https://github.com/cjanik/vinylcast#readme",
+  "dependencies": {
+    "audio-generator": "^2.1.2",
+    "castv2-client": "^1.2.0",
+    "express": "^4.16.4",
+    "ip": "^1.1.5",
+    "mdns": "^2.4.0",
+    "node-audiorecorder": "^1.4.0"
+  }
 }
