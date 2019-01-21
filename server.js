@@ -1,7 +1,8 @@
 const express = require("express")
 const cors = require("cors")
 const AudioRecorder = require("node-audiorecorder")
-const generator = require("audio-generator")
+const { Readable } = require('web-audio-stream/stream')
+const generator = require("audio-generator/stream")
 const ip = require("ip")
 const Client = require("castv2-client").Client
 const DefaultMediaReceiver = require("castv2-client").DefaultMediaReceiver
@@ -51,7 +52,7 @@ function ondeviceup(host) {
         )
 
         player.load(media, { autoplay: true }, function(status) {
-          console.log("media loaded playerState=%s", status.playerState)
+          console.log("media loaded playerState=%s", status && status.playerState)
         })
       })
     }
@@ -88,29 +89,38 @@ app.get("/list_devices",  (req, res, next) => {
 app.get("/select_device/:id", (req, res, next) => {
   ondeviceup(devices[req.params.id].address)
   browser.stop()
+  res.send("starting")
 })
   
 app.get("/vinylcast", cors(), (req, res, next) => {
-  let src = generator(function(time) {
-    return Math.sin(Math.PI * 2 * time * 440)
-  })
-  src.on("data", chunk => {
-    console.log(chunk)
-    res.write(chunk)
-  })
-  // const options = {
-  //   program: `arecord`, // Which program to use, either `arecord`, `rec`, or `sox`.
-  //   device: "hw:1,0", // Recording device to use.
-  //   bits: 16, // Sample size. (only for `rec` and `sox`)
-  //   channels: 1, // Channel count.
-  //   format: `S16_LE`, // Encoding type. (only for `arecord`)
-  //   rate: 44100, // Sample rate.
-  //   type: `wav`, // Format type.
-  // }
+  // res.set('content-type', 'audio/wav')
+  //let src = generator(function(time) {
+  //  // return Math.sin(Math.PI * 2 * time * 440)
+  //  return [
+  //    Math.sin(Math.PI * 2 * time * 439), //channel 1
+  //    Math.sin(Math.PI * 2 * time * 441), //channel 2
+  //  ]
+  //}, {
+  //  duration: 30
+  //})
+  //Readable(src).on("data", chunk => {
+  //  console.log(typeof chunk)
+  //  res.write(chunk)
+  //})
+   const options = {
+     program: `arecord`, // Which program to use, either `arecord`, `rec`, or `sox`.
+     device: "hw:1,0", // Recording device to use.
+     bits: 16, // Sample size. (only for `rec` and `sox`)
+     channels: 1, // Channel count.
+     format: `S16_LE`, // Encoding type. (only for `arecord`)
+     rate: 44100, // Sample rate.
+     type: `wav`, // Format type.
+   }
 
-  // const logger = console
+   const logger = console
 
-  // let audioRecorder = new AudioRecorder(options, logger)
+   let audioRecorder = new AudioRecorder(options, logger)
+   audioRecorder.start().stream().on("data", chunk => res.write(chunk))
 })
 app.listen(3030)
 console.log("app listening on 3030")
