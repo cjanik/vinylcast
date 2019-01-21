@@ -1,8 +1,6 @@
 const express = require("express")
 const cors = require("cors")
 const AudioRecorder = require("node-audiorecorder")
-const { Readable } = require('web-audio-stream/stream')
-const generator = require("audio-generator/stream")
 const ip = require("ip")
 const Client = require("castv2-client").Client
 const DefaultMediaReceiver = require("castv2-client").DefaultMediaReceiver
@@ -11,7 +9,7 @@ const mdns = require("mdns")
 const serviceIp = ip.address()
 console.log(`running on: ${serviceIp}`)
 
-function ondeviceup(host) {
+function castToDevice(host) {
   var client = new Client()
 
   client.connect(
@@ -21,23 +19,14 @@ function ondeviceup(host) {
 
       client.launch(DefaultMediaReceiver, function(err, player) {
         var media = {
-          // Here you can plug an URL to any mp4, webm, mp3 or jpg file with the proper contentType.
           contentId: `http://${serviceIp}:3030/vinylcast`,
-          //  "//commondatastorage.googleapis.com/gtv-videos-bucket/big_buck_bunny_1080p.mp4",
           contentType: "audio/wav",
           streamType: "LIVE", // BUFFERED / LIVE
-
           // Title and cover displayed while buffering
           metadata: {
             type: 0,
             metadataType: 0,
-            title: "Big Buck Bunny",
-            images: [
-              {
-                url:
-                  "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg"
-              }
-            ]
+            title: "From the turntable"
           }
         }
 
@@ -52,7 +41,10 @@ function ondeviceup(host) {
         )
 
         player.load(media, { autoplay: true }, function(status) {
-          console.log("media loaded playerState=%s", status && status.playerState)
+          console.log(
+            "media loaded playerState=%s",
+            status && status.playerState
+          )
         })
       })
     }
@@ -64,64 +56,52 @@ function ondeviceup(host) {
   })
 }
 const sequence = [
-    mdns.rst.DNSServiceResolve(),
-    'DNSServiceGetAddrInfo' in mdns.dns_sd ? mdns.rst.DNSServiceGetAddrInfo() : mdns.rst.getaddrinfo({families:[4]}),
-    mdns.rst.makeAddressesUnique()
+  mdns.rst.DNSServiceResolve(),
+  "DNSServiceGetAddrInfo" in mdns.dns_sd
+    ? mdns.rst.DNSServiceGetAddrInfo()
+    : mdns.rst.getaddrinfo({ families: [4] }),
+  mdns.rst.makeAddressesUnique()
 ]
 
-const browser = mdns.createBrowser(mdns.tcp("googlecast"), { resolverSequence: sequence })
+const browser = mdns.createBrowser(mdns.tcp("googlecast"), {
+  resolverSequence: sequence
+})
 const devices = []
 browser.on("serviceUp", function(service) {
   console.log(`found cast device: ${service.txtRecord.fn}`)
   devices.push({ name: service.txtRecord.fn, address: service.addresses[0] })
-  // ondeviceup(service.addresses[0])
-  //  browser.stop()
 })
 
 browser.on("error", err => console.log(`browser error: ${err}`))
 browser.start()
+
+const options = {
+  program: `arecord`, // Which program to use, either `arecord`, `rec`, or `sox`.
+  device: "hw:1,0", // Recording device to use.
+  bits: 16, // Sample size. (only for `rec` and `sox`)
+  channels: 2, // Channel count.
+  format: `S16_LE`, // Encoding type. (only for `arecord`)
+  rate: 44100, // Sample rate.
+  type: `wav` // Format type.
+}
+
+const audioRecorder = new AudioRecorder(options, console)
+
 const app = express()
 
-app.get("/list_devices",  (req, res, next) => {
+app.get("/list_devices", (req, res, next) => {
   res.json(devices)
 })
 
 app.get("/select_device/:id", (req, res, next) => {
-  ondeviceup(devices[req.params.id].address)
+  audioRecorder.start()
+  castToDevice(devices[req.params.id].address)
   browser.stop()
   res.send("starting")
 })
-  
+
 app.get("/vinylcast", cors(), (req, res, next) => {
-  // res.set('content-type', 'audio/wav')
-  //let src = generator(function(time) {
-  //  // return Math.sin(Math.PI * 2 * time * 440)
-  //  return [
-  //    Math.sin(Math.PI * 2 * time * 439), //channel 1
-  //    Math.sin(Math.PI * 2 * time * 441), //channel 2
-  //  ]
-  //}, {
-  //  duration: 30
-  //})
-  //Readable(src).on("data", chunk => {
-  //  console.log(typeof chunk)
-  //  res.write(chunk)
-  //})
-   const options = {
-     program: `arecord`, // Which program to use, either `arecord`, `rec`, or `sox`.
-     device: "hw:1,0", // Recording device to use.
-     bits: 16, // Sample size. (only for `rec` and `sox`)
-     channels: 1, // Channel count.
-     format: `S16_LE`, // Encoding type. (only for `arecord`)
-     rate: 44100, // Sample rate.
-     type: `wav`, // Format type.
-   }
-
-   const logger = console
-
-   let audioRecorder = new AudioRecorder(options, logger)
-   audioRecorder.start().stream().on("data", chunk => res.write(chunk))
+  audioRecorder.stream().on("data", chunk => res.write(chunk))
 })
 app.listen(3030)
 console.log("app listening on 3030")
-
