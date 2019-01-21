@@ -1,4 +1,5 @@
 const express = require("express")
+const cors = require("cors")
 const AudioRecorder = require("node-audiorecorder")
 const generator = require("audio-generator")
 const ip = require("ip")
@@ -20,10 +21,10 @@ function ondeviceup(host) {
       client.launch(DefaultMediaReceiver, function(err, player) {
         var media = {
           // Here you can plug an URL to any mp4, webm, mp3 or jpg file with the proper contentType.
-          contentId:
-            "//commondatastorage.googleapis.com/gtv-videos-bucket/big_buck_bunny_1080p.mp4",
-          contentType: "video/mp4",
-          streamType: "BUFFERED", // or LIVE
+          contentId: `http://${serviceIp}:3030/vinylcast`,
+          //  "//commondatastorage.googleapis.com/gtv-videos-bucket/big_buck_bunny_1080p.mp4",
+          contentType: "audio/wav",
+          streamType: "LIVE", // BUFFERED / LIVE
 
           // Title and cover displayed while buffering
           metadata: {
@@ -68,9 +69,10 @@ const sequence = [
 ]
 
 const browser = mdns.createBrowser(mdns.tcp("googlecast"), { resolverSequence: sequence })
-
+const devices = []
 browser.on("serviceUp", function(service) {
   console.log(`found cast device: ${service.txtRecord.fn}`)
+  devices.push({ name: service.txtRecord.fn, address: service.addresses[0] })
   // ondeviceup(service.addresses[0])
   //  browser.stop()
 })
@@ -79,11 +81,23 @@ browser.on("error", err => console.log(`browser error: ${err}`))
 browser.start()
 const app = express()
 
-app.get("/vinylcast", (req, res, next) => {
+app.get("/list_devices",  (req, res, next) => {
+  res.json(devices)
+})
+
+app.get("/select_device/:id", (req, res, next) => {
+  ondeviceup(devices[req.params.id].address)
+  browser.stop()
+})
+  
+app.get("/vinylcast", cors(), (req, res, next) => {
   let src = generator(function(time) {
     return Math.sin(Math.PI * 2 * time * 440)
   })
-  src.on("data", chunk => res.write(chunk))
+  src.on("data", chunk => {
+    console.log(chunk)
+    res.write(chunk)
+  })
   // const options = {
   //   program: `arecord`, // Which program to use, either `arecord`, `rec`, or `sox`.
   //   device: "hw:1,0", // Recording device to use.
