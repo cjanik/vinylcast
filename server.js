@@ -69,7 +69,7 @@ const browser = mdns.createBrowser(mdns.tcp("googlecast"), {
 const devices = []
 browser.on("serviceUp", function(service) {
   console.log(`found cast device: ${service.txtRecord.fn}`)
-  devices.push({ name: service.txtRecord.fn, address: service.addresses[0] })
+  devices.push({ name: service.txtRecord.fn, address: service.addresses[0], port: service.port })
 })
 
 browser.on("error", err => console.log(`browser error: ${err}`))
@@ -95,7 +95,7 @@ app.get("/list_devices", (req, res, next) => {
 
 app.get("/select_device/:id", (req, res, next) => {
   audioRecorder.start()
-  castToDevice(devices[req.params.id].address)
+  castToDevice({ host: devices[req.params.id].address, port: devices[req.params.id].port })
   browser.stop()
   res.send("starting")
 })
